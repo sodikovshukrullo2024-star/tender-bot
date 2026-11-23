@@ -16,6 +16,7 @@ import re
 import sys
 import time
 import urllib.parse
+import urllib.error
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -90,8 +91,7 @@ def load_config():
 def find_chat_id(token):
     """Read the last message someone sent to the bot and use that chat."""
     try:
-        with urllib.request.urlopen(f"https://api.telegram.org/bot{token}/getUpdates", timeout=30) as r:
-            data = json.loads(r.read())
+        data = tg_call(token, "getUpdates")
     except Exception as e:
         print("Could not reach Telegram:", e)
         return ""
@@ -103,14 +103,37 @@ def find_chat_id(token):
     return ""
 
 
+def tg_call(token, method, data=None, tries=4):
+    """Call the Telegram API, waiting and retrying if Telegram says 'too many requests'."""
+    url = f"https://api.telegram.org/bot{token}/{method}"
+    body = urllib.parse.urlencode(data).encode() if data else None
+    for i in range(tries):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, data=body), timeout=60) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            info = {}
+            try:
+                info = json.loads(e.read())
+            except Exception:
+                pass
+            if e.code == 429 and i < tries - 1:
+                wait = (info.get("parameters") or {}).get("retry_after", 30) + 2
+                print(f"Telegram busy, waiting {wait}s...")
+                time.sleep(wait)
+                continue
+            raise RuntimeError(f"Telegram error {e.code}: {info.get('description', '')}") from None
+        except Exception:
+            if i == tries - 1:
+                raise
+            time.sleep(10)
+
+
 def send_telegram(token, chat_id, text):
-    data = urllib.parse.urlencode({
+    return tg_call(token, "sendMessage", {
         "chat_id": chat_id, "text": text, "parse_mode": "HTML",
         "disable_web_page_preview": "true",
-    }).encode()
-    req = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendMessage", data=data)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read())
+    })
 
 
 def load_seen():
