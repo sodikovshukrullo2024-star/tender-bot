@@ -110,7 +110,8 @@ def tg_call(token, method, data=None, tries=4):
     body = urllib.parse.urlencode(data).encode() if data else None
     for i in range(tries):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, data=body), timeout=60) as r:
+            req = urllib.request.Request(url, data=body, headers={"User-Agent": "tender-bot/1.0"})
+            with urllib.request.urlopen(req, timeout=60) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
             info = {}
