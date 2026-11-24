@@ -105,7 +105,8 @@ def find_chat_id(token):
 
 def tg_call(token, method, data=None, tries=4):
     """Call the Telegram API, waiting and retrying if Telegram says 'too many requests'."""
-    url = f"https://api.telegram.org/bot{token}/{method}"
+    base = (os.getenv("TELEGRAM_API") or "https://api.telegram.org").rstrip("/")
+    url = f"{base}/bot{token}/{method}"
     body = urllib.parse.urlencode(data).encode() if data else None
     for i in range(tries):
         try:

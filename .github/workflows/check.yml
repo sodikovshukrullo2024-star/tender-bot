@@ -38,15 +38,18 @@ jobs:
         if: ${{ inputs.test }}
         env:
           T: ${{ secrets.TELEGRAM_TOKEN }}
+          API: ${{ secrets.TELEGRAM_API }}
         run: |
-          echo "getMe:"; curl -s -m 40 -w " [%{http_code} %{time_total}s]\n" "https://api.telegram.org/bot$T/getMe" | sed "s/$T/***/g" || true
-          echo "webhook:"; curl -s -m 40 -w " [%{http_code} %{time_total}s]\n" "https://api.telegram.org/bot$T/getWebhookInfo" || true
-          echo "updates:"; curl -s -m 40 -w " [%{http_code} %{time_total}s]\n" "https://api.telegram.org/bot$T/getUpdates?limit=5" | head -c 1500 || true
+          API="${API:-https://api.telegram.org}"
+          echo "getMe:"; curl -s -m 40 -w " [%{http_code} %{time_total}s]\n" "$API/bot$T/getMe" | sed "s/$T/***/g" || true
+          echo "webhook:"; curl -s -m 40 -w " [%{http_code} %{time_total}s]\n" "$API/bot$T/getWebhookInfo" || true
+          echo "updates:"; curl -s -m 40 -w " [%{http_code} %{time_total}s]\n" "$API/bot$T/getUpdates?limit=5" | head -c 1500 || true
 
       - name: Run bot
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_API: ${{ secrets.TELEGRAM_API }}
         run: |
           if [ "${{ inputs.test }}" = "true" ]; then
             python tender_bot.py --test
